@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Keycloak Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --surface2: #1a1a26;
+      --border: #2a2a3d;
+      --accent: #6c63ff;
+      --accent2: #ff6b6b;
+      --accent3: #43e97b;
+      --text: #e8e8f0;
+      --text-dim: #7a7a9a;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(108,99,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(108,99,255,0.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+    }
+
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2.5rem;
+      background: rgba(10,10,15,0.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      font-size: 1rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .nav-right { display: flex; align-items: center; gap: 0.75rem; }
+
+    .avatar {
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), #a78bfa);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800;
+      font-size: 0.85rem;
+      color: white;
+    }
+
+    .username-badge {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--text-dim);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 1.1rem;
+      border-radius: 6px;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      background: transparent;
+    }
+    .btn:hover { border-color: var(--accent); color: var(--text); }
+
+    .content {
+      position: relative;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2.5rem 2rem;
+    }
+
+    .page-header {
+      margin-bottom: 2.5rem;
+    }
+
+    .page-tag {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--accent);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+
+    .page-title {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .page-title span { color: var(--accent); }
+
+    /* Stats row */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+    }
+
+    .stat-label {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      letter-spacing: 0.08em;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .stat-value.green { color: var(--accent3); }
+    .stat-value.purple { color: var(--accent); }
+
+    /* Main grid */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 768px) { .main-grid { grid-template-columns: 1fr; } }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 1.1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .panel-tag {
+      font-family: var(--mono);
+      font-size: 0.66rem;
+      color: var(--text-dim);
+    }
+
+    .panel-body { padding: 1.5rem; }
+
+    /* Token info */
+    .token-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.85rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+
+    .token-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .token-row:first-child { padding-top: 0; }
+
+    .token-key {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+
+    .token-val {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      text-align: right;
+      max-width: 60%;
+      word-break: break-all;
+    }
+
+    /* Role badges */
+    .roles-list { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+
+    .role-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      padding: 0.3rem 0.75rem;
+      border-radius: 100px;
+    }
+
+    .role-badge.user  { background: rgba(67,233,123,0.1);  border: 1px solid rgba(67,233,123,0.3);  color: var(--accent3); }
+    .role-badge.admin { background: rgba(255,107,107,0.1); border: 1px solid rgba(255,107,107,0.3); color: var(--accent2); }
+    .role-badge.other { background: rgba(108,99,255,0.1);  border: 1px solid rgba(108,99,255,0.3);  color: var(--accent); }
+
+    /* Admin panel */
+    .admin-panel {
+      margin-top: 1.5rem;
+      background: rgba(255,107,107,0.05);
+      border: 1px solid rgba(255,107,107,0.2);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .admin-header {
+      background: rgba(255,107,107,0.1);
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid rgba(255,107,107,0.2);
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--accent2);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .admin-body {
+      padding: 1.25rem 1.5rem;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      line-height: 1.7;
+    }
+
+    .admin-body code {
+      background: var(--surface2);
+      padding: 0.1rem 0.4rem;
+      border-radius: 3px;
+      color: var(--accent2);
+    }
+
+    /* Activity log */
+    .activity-item {
+      display: flex;
+      gap: 1rem;
+      padding: 0.85rem 0;
+      border-bottom: 1px solid var(--border);
+      align-items: flex-start;
+    }
+
+    .activity-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .activity-item:first-child { padding-top: 0; }
+
+    .activity-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      margin-top: 5px;
+      flex-shrink: 0;
+    }
+    .activity-dot.green  { background: var(--accent3); }
+    .activity-dot.purple { background: var(--accent); }
+    .activity-dot.red    { background: var(--accent2); }
+
+    .activity-text { font-size: 0.83rem; line-height: 1.5; }
+    .activity-time {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      color: var(--text-dim);
+      margin-top: 0.2rem;
+    }
+
+    .hidden-panel {
+      margin-top: 1.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="logo">
+      <div class="dot"></div>
+      KeycloakDemo
+    </div>
+    <div class="nav-right">
+      <span class="username-badge">{{.User.Username}}</span>
+      <div class="avatar">{{slice .User.GivenName 0 1}}</div>
+      <a href="/profile" class="btn">Profil</a>
+      <a href="/logout" class="btn">Logout</a>
+    </div>
+  </nav>
+
+  <div class="content">
+    <div class="page-header">
+      <div class="page-tag">// Protected Route</div>
+      <h1 class="page-title">Selamat datang, <span>{{.User.GivenName}}</span></h1>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">STATUS AUTENTIKASI</div>
+        <div class="stat-value green">✓ Authenticated</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">TOKEN EXPIRES IN</div>
+        <div class="stat-value purple">{{.TokenExpiry}}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">JUMLAH ROLES</div>
+        <div class="stat-value">{{len .User.Roles}} role(s)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">WAKTU SEKARANG</div>
+        <div class="stat-value" style="font-size:0.85rem; font-family: var(--mono)">{{.CurrentTime}}</div>
+      </div>
+    </div>
+
+    <div class="main-grid">
+      <!-- Left: Token & User Info -->
+      <div>
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Informasi Session</span>
+            <span class="panel-tag">dari JWT Claims</span>
+          </div>
+          <div class="panel-body">
+            <div class="token-row">
+              <span class="token-key">sub (user ID)</span>
+              <span class="token-val" style="color: var(--accent); font-size: 0.72rem">{{.User.UserID}}</span>
+            </div>
+            <div class="token-row">
+              <span class="token-key">preferred_username</span>
+              <span class="token-val">{{.User.Username}}</span>
+            </div>
+            <div class="token-row">
+              <span class="token-key">name</span>
+              <span class="token-val">{{.User.Name}}</span>
+            </div>
+            <div class="token-row">
+              <span class="token-key">email</span>
+              <span class="token-val">{{.User.Email}}</span>
+            </div>
+            <div class="token-row">
+              <span class="token-key">realm_access.roles</span>
+              <div>
+                <div class="roles-list">
+                  {{range .User.Roles}}
+                    {{if eq . "user"}}
+                      <span class="role-badge user">● {{.}}</span>
+                    {{else if eq . "admin"}}
+                      <span class="role-badge admin">● {{.}}</span>
+                    {{else}}
+                      <span class="role-badge other">● {{.}}</span>
+                    {{end}}
+                  {{end}}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {{if .IsAdmin}}
+        <div class="admin-panel">
+          <div class="admin-header">🔴 Area Admin — Hanya terlihat oleh role <code>admin</code></div>
+          <div class="admin-body">
+            Kamu memiliki role <code>admin</code>. Di aplikasi nyata, section ini bisa berisi
+            user management, audit logs, konfigurasi sistem, dll. <br><br>
+            Logika RBAC-nya ada di template: <code>{{"{{"}}if .IsAdmin{{"}}"}}</code>, yang
+            nilainya dikirim dari handler Go berdasarkan roles yang di-parse dari JWT Access Token.
+          </div>
+        </div>
+        {{end}}
+
+        <div class="hidden-panel" style="margin-top: 1.5rem">
+          <div class="panel-header">
+            <span class="panel-title">Penjelasan: Kenapa route ini aman?</span>
+          </div>
+          <div class="panel-body" style="font-size: 0.83rem; color: var(--text-dim); line-height: 1.7">
+            Route <code style="background: var(--surface2); padding: 0.1rem 0.4rem; border-radius: 3px; color: var(--accent)">/dashboard</code>
+            dibungkus oleh <strong style="color: var(--text)">AuthMiddleware</strong> di <code style="background: var(--surface2); padding: 0.1rem 0.4rem; border-radius: 3px; color: var(--accent)">main.go</code>.
+            Middleware ini mengecek apakah session cookie berisi flag <code style="background: var(--surface2); padding: 0.1rem 0.4rem; border-radius: 3px; color: var(--accent)">authenticated = true</code>
+            sebelum mengizinkan akses. Jika tidak ada, user langsung di-redirect ke <code style="background: var(--surface2); padding: 0.1rem 0.4rem; border-radius: 3px; color: var(--accent)">/login</code>.
+            Flag ini hanya di-set setelah ID Token berhasil diverifikasi di callback handler.
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Activity Log -->
+      <div>
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Alur Auth Log</span>
+          </div>
+          <div class="panel-body">
+            <div class="activity-item">
+              <div class="activity-dot green"></div>
+              <div>
+                <div class="activity-text">User klik Login, Go app generate <strong>state</strong> + <strong>PKCE verifier</strong></div>
+                <div class="activity-time">Step 1</div>
+              </div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-dot purple"></div>
+              <div>
+                <div class="activity-text">Browser di-redirect ke halaman login Keycloak</div>
+                <div class="activity-time">Step 2</div>
+              </div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-dot green"></div>
+              <div>
+                <div class="activity-text">User masukkan credentials di Keycloak</div>
+                <div class="activity-time">Step 3</div>
+              </div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-dot purple"></div>
+              <div>
+                <div class="activity-text">Keycloak kirim <strong>authorization code</strong> ke <code style="background: var(--surface2); padding: 0.1rem 0.3rem; border-radius: 2px; font-size: 0.7rem">/callback</code></div>
+                <div class="activity-time">Step 4</div>
+              </div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-dot green"></div>
+              <div>
+                <div class="activity-text">Go app verifikasi <strong>state</strong>, tukar code + PKCE verifier</div>
+                <div class="activity-time">Step 5</div>
+              </div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-dot purple"></div>
+              <div>
+                <div class="activity-text">Keycloak return <strong>Access Token</strong> + <strong>ID Token</strong></div>
+                <div class="activity-time">Step 6</div>
+              </div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-dot green"></div>
+              <div>
+                <div class="activity-text">ID Token diverifikasi signature-nya, claims disimpan di session</div>
+                <div class="activity-time">Step 7</div>
+              </div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-dot green" style="background: var(--accent3)"></div>
+              <div>
+                <div class="activity-text"><strong style="color: var(--accent3)">✓ Kamu sekarang ada di sini!</strong></div>
+                <div class="activity-time">Step 8 — Selesai</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

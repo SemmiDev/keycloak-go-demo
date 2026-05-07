@@ -1,0 +1,93 @@
+# Best practice: Keycloak menggunakan PostgreSQL sebagai database production-ready.
+# Jangan pakai embedded H2 database karena itu hanya untuk development lokal cepat
+# dan tidak cocok untuk production.
+
+services:
+  # ─────────────────────────────────────────────
+  # PostgreSQL: Database untuk Keycloak
+  # ─────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: keycloak_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak_secret_password
+    volumes:
+      # Persist data agar tidak hilang saat container restart
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - keycloak_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────
+  # Keycloak: Identity Provider
+  # ─────────────────────────────────────────────
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.3
+    container_name: keycloak
+    restart: unless-stopped
+    command:
+      # 'start-dev' untuk development. Untuk production pakai 'start'
+      # dengan TLS/HTTPS dikonfigurasi.
+      - start-dev
+      # Import realm otomatis saat pertama kali start
+      - --import-realm
+    environment:
+      # Admin credentials untuk Keycloak Admin Console
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+
+      # Konfigurasi database PostgreSQL
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak_secret_password
+
+      # Hostname — penting untuk URL callback OAuth2
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8080
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_HTTPS: false
+
+      # Log level (gunakan 'warn' di production)
+      KC_LOG_LEVEL: info
+
+      # Health check endpoint
+      KC_HEALTH_ENABLED: true
+    ports:
+      - "8080:8080"    # Port utama Keycloak
+    volumes:
+      # Mount folder realm-export agar Keycloak bisa import realm otomatis
+      - ./keycloak:/opt/keycloak/data/import
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - keycloak_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+# ─────────────────────────────────────────────
+# Shared Network
+# ─────────────────────────────────────────────
+networks:
+  keycloak_network:
+    driver: bridge
+
+# ─────────────────────────────────────────────
+# Persistent Volumes
+# ─────────────────────────────────────────────
+volumes:
+  postgres_data:

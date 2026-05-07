@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Keycloak Go Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --surface2: #1a1a26;
+      --border: #2a2a3d;
+      --accent: #6c63ff;
+      --accent2: #ff6b6b;
+      --accent3: #43e97b;
+      --text: #e8e8f0;
+      --text-dim: #7a7a9a;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(108,99,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(108,99,255,0.04) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 3rem;
+      background: rgba(10,10,15,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .logo-dot {
+      width: 8px; height: 8px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    .nav-links { display: flex; gap: 1rem; align-items: center; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.4rem;
+      border-radius: 6px;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+      letter-spacing: 0.02em;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+    .btn-primary:hover { background: #7c74ff; transform: translateY(-1px); }
+
+    .btn-outline {
+      border-color: var(--border);
+      color: var(--text-dim);
+      background: transparent;
+    }
+    .btn-outline:hover { border-color: var(--accent); color: var(--text); }
+
+    .btn-success {
+      background: rgba(67,233,123,0.15);
+      color: var(--accent3);
+      border-color: rgba(67,233,123,0.3);
+    }
+    .btn-success:hover { background: rgba(67,233,123,0.25); }
+
+    main {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 5rem 2rem 4rem;
+    }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 5rem;
+    }
+
+    .badge {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      padding: 0.35rem 1rem;
+      border-radius: 100px;
+      background: rgba(108,99,255,0.12);
+      border: 1px solid rgba(108,99,255,0.3);
+      color: var(--accent);
+      margin-bottom: 1.5rem;
+      letter-spacing: 0.08em;
+    }
+
+    h1 {
+      font-size: clamp(2.5rem, 6vw, 5rem);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.5rem;
+    }
+
+    .gradient-text {
+      background: linear-gradient(135deg, var(--accent), #a78bfa, var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-desc {
+      font-size: 1.1rem;
+      color: var(--text-dim);
+      max-width: 560px;
+      margin: 0 auto 2.5rem;
+      line-height: 1.7;
+    }
+
+    .hero-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+
+    /* Flow diagram */
+    .flow-section {
+      margin: 4rem 0;
+    }
+
+    .section-label {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--accent);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+
+    .flow-diagram {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2.5rem;
+      overflow-x: auto;
+    }
+
+    .flow-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 2rem;
+      color: var(--text);
+    }
+
+    .flow-steps {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+    }
+
+    .flow-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      min-width: 110px;
+    }
+
+    .flow-icon {
+      width: 52px; height: 52px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      border: 1px solid var(--border);
+    }
+
+    .flow-icon.user   { background: rgba(108,99,255,0.15); border-color: rgba(108,99,255,0.4); }
+    .flow-icon.app    { background: rgba(67,233,123,0.1);  border-color: rgba(67,233,123,0.3); }
+    .flow-icon.kc     { background: rgba(255,107,107,0.1); border-color: rgba(255,107,107,0.3); }
+
+    .flow-label {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      text-align: center;
+    }
+
+    .flow-arrow {
+      flex: 1;
+      min-width: 50px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0 0.5rem;
+      padding-bottom: 1.5rem;
+    }
+
+    .flow-arrow-line {
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), var(--accent), var(--border), transparent);
+      position: relative;
+    }
+
+    .flow-arrow-line::after {
+      content: '▶';
+      position: absolute;
+      right: -6px;
+      top: -9px;
+      font-size: 0.65rem;
+      color: var(--accent);
+    }
+
+    .flow-desc {
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      color: var(--text-dim);
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    /* Cards */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.25rem;
+      margin-top: 3rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.75rem;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .card-icon {
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+    }
+
+    .card h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .card p {
+      font-size: 0.88rem;
+      color: var(--text-dim);
+      line-height: 1.6;
+    }
+
+    .tag {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      background: rgba(108,99,255,0.1);
+      border: 1px solid rgba(108,99,255,0.2);
+      color: var(--accent);
+      margin-top: 0.75rem;
+    }
+
+    /* Demo accounts */
+    .demo-box {
+      margin-top: 3rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .demo-box-header {
+      padding: 1.25rem 1.75rem;
+      border-bottom: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .demo-box-header::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--accent3); }
+
+    .demo-accounts {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      divide-x: var(--border);
+    }
+
+    .demo-account {
+      padding: 1.5rem 1.75rem;
+      border-right: 1px solid var(--border);
+    }
+    .demo-account:last-child { border-right: none; }
+
+    .demo-account h4 {
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: var(--text);
+    }
+
+    .cred-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      font-size: 0.82rem;
+    }
+
+    .cred-label { color: var(--text-dim); font-family: var(--mono); font-size: 0.74rem; }
+
+    .cred-value {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      background: var(--surface2);
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .role-pill {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 100px;
+      margin-top: 0.6rem;
+    }
+    .role-user  { background: rgba(67,233,123,0.1);  border: 1px solid rgba(67,233,123,0.3);  color: var(--accent3); }
+    .role-admin { background: rgba(255,107,107,0.1); border: 1px solid rgba(255,107,107,0.3); color: var(--accent2); }
+
+    footer {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 2.5rem;
+      border-top: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+
+    .logged-in-banner {
+      background: rgba(67,233,123,0.08);
+      border: 1px solid rgba(67,233,123,0.25);
+      border-radius: 10px;
+      padding: 1.25rem 1.75rem;
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .logged-in-info { display: flex; align-items: center; gap: 0.75rem; }
+    .logged-in-dot  { width: 8px; height: 8px; border-radius: 50%; background: var(--accent3); animation: pulse 2s infinite; }
+    .logged-in-text { font-size: 0.9rem; }
+    .logged-in-text strong { color: var(--accent3); }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="logo">
+      <div class="logo-dot"></div>
+      KeycloakDemo
+    </div>
+    <div class="nav-links">
+      {{if .IsAuthenticated}}
+        <a href="/dashboard" class="btn btn-outline">Dashboard</a>
+        <a href="/profile" class="btn btn-outline">Profil</a>
+        <a href="/logout" class="btn btn-outline">Logout</a>
+      {{else}}
+        <a href="/login" class="btn btn-primary">Login →</a>
+      {{end}}
+    </div>
+  </nav>
+
+  <main>
+    {{if .IsAuthenticated}}
+    <div class="logged-in-banner">
+      <div class="logged-in-info">
+        <div class="logged-in-dot"></div>
+        <div class="logged-in-text">Kamu login sebagai <strong>{{.Username}}</strong></div>
+      </div>
+      <a href="/dashboard" class="btn btn-success">Ke Dashboard →</a>
+    </div>
+    {{end}}
+
+    <div class="hero">
+      <div class="badge">⚡ OpenID Connect + PKCE + OAuth 2.0</div>
+      <h1>Auth yang <span class="gradient-text">Benar</span><br>dengan Keycloak</h1>
+      <p class="hero-desc">
+        Demo implementasi lengkap autentikasi modern menggunakan Keycloak sebagai Identity Provider,
+        Authorization Code Flow dengan PKCE, dan Go sebagai backend.
+      </p>
+      <div class="hero-actions">
+        {{if .IsAuthenticated}}
+          <a href="/dashboard" class="btn btn-primary">Buka Dashboard →</a>
+          <a href="/logout" class="btn btn-outline">Logout</a>
+        {{else}}
+          <a href="/login" class="btn btn-primary">Coba Login →</a>
+          <a href="http://localhost:8080" target="_blank" class="btn btn-outline">Keycloak Admin ↗</a>
+        {{end}}
+      </div>
+    </div>
+
+    <div class="flow-section">
+      <div class="section-label">// Authorization Code Flow</div>
+      <div class="flow-diagram">
+        <div class="flow-title">Bagaimana alur login bekerja?</div>
+        <div class="flow-steps">
+          <div class="flow-step">
+            <div class="flow-icon user">👤</div>
+            <div class="flow-label">User<br>Browser</div>
+          </div>
+          <div class="flow-arrow">
+            <div class="flow-arrow-line"></div>
+            <div class="flow-desc">1. Klik Login</div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-icon app">🔷</div>
+            <div class="flow-label">Go App<br>:9090</div>
+          </div>
+          <div class="flow-arrow">
+            <div class="flow-arrow-line"></div>
+            <div class="flow-desc">2. Redirect +<br>state & challenge</div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-icon kc">🔐</div>
+            <div class="flow-label">Keycloak<br>:8080</div>
+          </div>
+          <div class="flow-arrow">
+            <div class="flow-arrow-line"></div>
+            <div class="flow-desc">3. auth_code</div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-icon app">🔷</div>
+            <div class="flow-label">Go App<br>/callback</div>
+          </div>
+          <div class="flow-arrow">
+            <div class="flow-arrow-line"></div>
+            <div class="flow-desc">4. Tukar code<br>+ verifier</div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-icon kc">🔐</div>
+            <div class="flow-label">Keycloak<br>Token</div>
+          </div>
+          <div class="flow-arrow">
+            <div class="flow-arrow-line"></div>
+            <div class="flow-desc">5. JWT Tokens</div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-icon user">✅</div>
+            <div class="flow-label">User<br>Dashboard</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label">// Fitur yang diimplementasikan</div>
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-icon">🔐</div>
+        <h3>PKCE Protection</h3>
+        <p>Proof Key for Code Exchange mencegah authorization code interception attack, wajib untuk aplikasi modern.</p>
+        <span class="tag">RFC 7636</span>
+      </div>
+      <div class="card">
+        <div class="card-icon">🛡️</div>
+        <h3>CSRF State Token</h3>
+        <p>Random state token diverifikasi di setiap callback untuk memastikan request berasal dari sesi yang sah.</p>
+        <span class="tag">OAuth 2.0 Best Practice</span>
+      </div>
+      <div class="card">
+        <div class="card-icon">🎫</div>
+        <h3>JWT Verification</h3>
+        <p>ID Token diverifikasi signature-nya menggunakan public key Keycloak, bukan hanya dipercaya begitu saja.</p>
+        <span class="tag">OpenID Connect</span>
+      </div>
+      <div class="card">
+        <div class="card-icon">👥</div>
+        <h3>Role-Based Access</h3>
+        <p>Realm roles dari Keycloak diparse dari JWT dan digunakan untuk mengontrol akses ke fitur tertentu.</p>
+        <span class="tag">RBAC</span>
+      </div>
+      <div class="card">
+        <div class="card-icon">🚪</div>
+        <h3>Single Logout</h3>
+        <p>Logout tidak hanya menghapus session lokal, tapi juga me-invalidate session di Keycloak.</p>
+        <span class="tag">SSO Logout</span>
+      </div>
+      <div class="card">
+        <div class="card-icon">🍪</div>
+        <h3>Secure Session</h3>
+        <p>Token disimpan di server-side session dengan HttpOnly cookie, bukan di localStorage yang mudah diakses JS.</p>
+        <span class="tag">Security Best Practice</span>
+      </div>
+    </div>
+
+    <div class="demo-box">
+      <div class="demo-box-header">// Akun demo yang sudah tersedia</div>
+      <div class="demo-accounts">
+        <div class="demo-account">
+          <h4>Standard User</h4>
+          <div class="cred-row">
+            <span class="cred-label">username</span>
+            <span class="cred-value">testuser</span>
+          </div>
+          <div class="cred-row">
+            <span class="cred-label">password</span>
+            <span class="cred-value">password123</span>
+          </div>
+          <div>
+            <span class="role-pill role-user">user</span>
+          </div>
+        </div>
+        <div class="demo-account">
+          <h4>Admin User</h4>
+          <div class="cred-row">
+            <span class="cred-label">username</span>
+            <span class="cred-value">adminuser</span>
+          </div>
+          <div class="cred-row">
+            <span class="cred-label">password</span>
+            <span class="cred-value">admin123</span>
+          </div>
+          <div>
+            <span class="role-pill role-user">user</span>
+            <span class="role-pill role-admin">admin</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    Built with Go + Keycloak + OpenID Connect &nbsp;·&nbsp; Realm: demo-realm
+  </footer>
+</body>
+</html>
